@@ -1,0 +1,25 @@
+{
+  "name": "ascetext-plugin-code",
+  "version": "0.1.0",
+  "description": "Ascetext plugin for code formatting",
+  "main": "index.js",
+  "type": "module",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ascetext/ascetext-plugin-code.git"
+  },
+  "author": "Aleksey Chikin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ascetext/ascetext-plugin-code/issues"
+  },
+  "homepage": "https://github.com/ascetext/ascetext-plugin-code#readme",
+  "peerDependencies": {
+    "ascetext": "^0.8.5"
+  }
+}
