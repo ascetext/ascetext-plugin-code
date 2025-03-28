@@ -1,6 +1,6 @@
 import { PluginPlugin, InlineWidget, Widget, Container } from 'ascetext'
 
-class CodeInline extends InlineWidget {
+export class CodeInline extends InlineWidget {
 	constructor() {
 		super('code-inline')
 	}
@@ -18,7 +18,7 @@ class CodeInline extends InlineWidget {
 	}
 }
 
-class CodeBlock extends Widget {
+export class CodeBlock extends Widget {
 	constructor() {
 		super('code-block')
 	}
@@ -48,7 +48,7 @@ class CodeBlock extends Widget {
 	}
 }
 
-class CodeLine extends Container {
+export class CodeLine extends Container {
 	constructor() {
 		super('code-line')
 
@@ -144,10 +144,7 @@ class CodeLine extends Container {
 		event,
 		{
 			builder,
-			anchorAtLastPositionInContainer,
-			anchorAtFirstPositionInContainer,
-			anchorContainer,
-			setSelection
+			anchorAtLastPositionInContainer
 		}
 	) {
 		if (anchorAtLastPositionInContainer) {
@@ -185,7 +182,7 @@ class CodeLine extends Container {
 	}
 }
 
-export default class CodePlugin extends PluginPlugin {
+export class CodePlugin extends PluginPlugin {
 	get register() {
 		return {
 			'code-inline': CodeInline,
@@ -323,10 +320,12 @@ export default class CodePlugin extends PluginPlugin {
 		}
 	}
 
-	removeCode(event, { builder, focusedNodes }) {
-		focusedNodes.forEach((node) => {
-			if (node.type === 'code-inline' || node.type === 'code-block') {
-				builder.replace(node, node.first)
+	removeCode(event, { builder, getSelectedItems }) {
+		const selectedItems = getSelectedItems()
+
+		selectedItems.forEach((item) => {
+			if (item.type === 'code-inline') {
+				builder.replace(item, item.first)
 			}
 		})
 	}
@@ -372,6 +371,14 @@ export default class CodePlugin extends PluginPlugin {
 			return previous
 		}
 
+		if (node.type === 'code-inline' && !node.first) {
+			builder.cut(node)
+
+			return node
+		}
+
 		return false
 	}
 }
+
+export default CodePlugin
