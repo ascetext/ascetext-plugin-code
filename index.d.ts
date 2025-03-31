@@ -53,14 +53,14 @@ declare class CodeLine extends Container {
 	onCombine(builder: Builder): void;
 	render(): VirtualTree;
 	json(): {
-		type: 'code-block';
+		type: 'code-line';
 	};
 	json<T extends { type: string }[]>(children: T): {
-		type: 'code-block';
+		type: 'code-line';
 		body: T;
 	};
 	json<T extends { type: string }[]>(children?: T): {
-		type: 'code-block';
+		type: 'code-line';
 		body?: T;
 	};
 }
