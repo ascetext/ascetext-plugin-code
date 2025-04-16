@@ -1,6 +1,6 @@
 {
   "name": "ascetext-plugin-code",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Ascetext plugin for code formatting",
   "main": "index.js",
   "type": "module",
@@ -20,6 +20,6 @@
   },
   "homepage": "https://github.com/ascetext/ascetext-plugin-code#readme",
   "peerDependencies": {
-    "ascetext": "^0.8.5"
+    "ascetext": "^0.9.1-rc"
   }
 }

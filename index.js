@@ -91,12 +91,7 @@ export class CodeLine extends Container {
 			setSelection
 		}
 	) {
-		if (event.shiftKey && this.parent.first === this && this.parent.parent.isSection) {
-			const block = builder.createBlock()
-
-			builder.append(this.parent.parent, block, this.parent)
-			setSelection(block)
-		} else if (event.shiftKey && this.parent.last === this && this.parent.parent.isSection) {
+		if (event.shiftKey && this.parent.last === this && this.parent.parent.isSection) {
 			const block = builder.createBlock()
 
 			builder.append(this.parent.parent, block, this.parent.next)
@@ -241,7 +236,7 @@ export class CodePlugin extends PluginPlugin {
 				code = item
 			}
 
-			if (item.type === 'text') {
+			if (item.type === 'text' && item.parent.type !== 'code-line') {
 				hasText = true
 			}
 		})
@@ -300,7 +295,7 @@ export class CodePlugin extends PluginPlugin {
 		const selectedItems = getSelectedItems()
 
 		selectedItems.forEach((item) => {
-			if (item.type === 'text') {
+			if (item.type === 'text' && item.parent.type !== 'code-line') {
 				const code = builder.create('code-inline')
 
 				builder.replace(item, code)
@@ -333,48 +328,66 @@ export class CodePlugin extends PluginPlugin {
 	normalize(node, builder) {
 		const parent = node.parent
 
-		if (parent && parent.type === 'code-block') {
-			if (node.type === 'code-inline' || node.isContainer && node.type !== 'code-line') {
-				const codeLine = builder.create('code-line')
+		if (parent) {
+			if (parent.type === 'code-block') {
+				if (node.type === 'code-inline' || node.isContainer && node.type !== 'code-line') {
+					const codeLine = builder.create('code-line')
 
-				builder.convert(node, codeLine)
-				
-				return codeLine
+					builder.convert(node, codeLine)
+					
+					return codeLine
+				}
+
+				if (node.type === 'text') {
+					const codeLine = builder.create('code-line')
+
+					builder.wrap(node, codeLine, node)
+
+					return node
+				}
+
+				if (node.type !== 'code-line') {
+					builder.append(parent, node.first)
+					builder.cut(node)
+
+					return parent
+				}
 			}
 
-			if (node.type !== 'code-line') {
-				builder.append(parent, node.first)
-				builder.cut(node)
+			if (parent.type === 'code-line' && parent.parent) {
+				if (node.type === 'breakLine') {
+					const codeLine = builder.create('code-line')
 
-				return parent
+					builder.append(codeLine, node.next)
+					builder.append(parent.parent, codeLine, parent.next)
+					builder.cut(node)
+
+					return parent.parent
+				}
 			}
 		}
 
-		if (parent && parent.type === 'code-line' && parent.parent) {
-			if (node.type === 'breakLine') {
-				const codeLine = builder.create('code-line')
-
-				builder.append(codeLine, node.next)
-				builder.append(parent.parent, codeLine, parent.next)
-				builder.cut(node)
-
-				return parent.parent
-			}
-		}
-
-		if (node.type === 'code-block' && node.previous && node.previous.type === 'code-block') {
-			const previous = node.previous
-
-			builder.append(previous, node.first)
-			builder.cut(node)
-
-			return previous
-		}
-
-		if (node.type === 'code-inline' && !node.first) {
+		if (node.type === 'code-inline' && (!node.first || !node.first.length)) {
 			builder.cut(node)
 
 			return node
+		}
+
+		if (node.type === 'code-line') {
+			const text = node.first
+			let match
+
+			if (text && text.type === 'text') {
+				if (match = text.attributes.content.match(/\n+/)) {
+					const right = builder.splitByOffset(node, match.index + match[0].length)
+					const left = builder.splitByOffset(node, match.index)
+
+					builder.splitByTail(parent, right.tail)
+					builder.cut(left.tail)
+
+					return node
+				}
+			}
 		}
 
 		return false
