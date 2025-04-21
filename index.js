@@ -54,6 +54,7 @@ export class CodeLine extends Container {
 
 		this.upHandler = this.upHandler.bind(this)
 		this.downHandler = this.downHandler.bind(this)
+		this.trimWhiteSpaces = false
 	}
 
 	get shortcuts() {
@@ -131,6 +132,14 @@ export class CodeLine extends Container {
 				} else if (this.parent.previous) {
 					setSelection(this.parent.previous, -1)
 				}
+			} else {
+				const previousSelectableNode = this.getPreviousSelectableNode()
+
+				if (!previousSelectableNode) {
+					return false
+				}
+
+				builder.combine(previousSelectableNode, this)
 			}
 		}
 	}
@@ -161,7 +170,17 @@ export class CodeLine extends Container {
 	}
 
 	onCombine(builder) {
+		const parent = this.parent
+
+		if (parent.previous && parent.previous.type === 'code-block') {
+			builder.append(parent.previous, this)
+		}
+
 		builder.cut(this)
+
+		if (!parent.length) {
+			builder.cut(parent)
+		}
 	}
 
 	render(body) {
@@ -367,10 +386,21 @@ export class CodePlugin extends PluginPlugin {
 			}
 		}
 
-		if (node.type === 'code-inline' && (!node.first || !node.first.length)) {
-			builder.cut(node)
+		if (node.type === 'code-inline') {
+			if (!node.first || !node.first.length) {
+				builder.cut(node)
 
-			return node
+				return node
+			}
+
+			if (parent.type === 'code-line') {
+				const next = node.previous || node.next || parent
+
+				builder.append(parent, node.first, node.next)
+				builder.cut(node)
+
+				return next
+			}
 		}
 
 		if (node.type === 'code-line') {
@@ -388,6 +418,14 @@ export class CodePlugin extends PluginPlugin {
 					return node
 				}
 			}
+		}
+
+		if (node.type === 'code-block' && !node.first) {
+			const line = builder.create('code-line')
+
+			builder.append(node, line)
+
+			return line
 		}
 
 		return false
