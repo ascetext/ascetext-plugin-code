@@ -67,6 +67,9 @@ declare class CodeLine extends Container {
 
 export default class CodePlugin extends PluginPlugin {
 	get icons(): IconsGetter;
+	get autocompleteRule(): RegExp;
+	get autocompleteTrigger(): RegExp;
+	autocomplete(match: RegExpMatchArray, builder: Builder, selection: Selection): void;
 	parse(element: HTMLElement | Text, builder: Builder): CodeInline | CodeBlock | CodeLine | undefined;
 	parseJson(element: HTMLElement | Text, builder: Builder): CodeInline | CodeBlock | CodeLine | undefined;
 	createCodeInline(event: MouseEvent, params: ActionParams): void;

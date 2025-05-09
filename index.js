@@ -19,8 +19,8 @@ export class CodeInline extends InlineWidget {
 }
 
 export class CodeBlock extends Widget {
-	constructor() {
-		super('code-block')
+	constructor(attributes = {}, params = {}) {
+		super('code-block', attributes, params)
 	}
 
 	render(body) {
@@ -32,7 +32,7 @@ export class CodeBlock extends Widget {
 	}
 
 	split(builder, next) {
-		const block = builder.create('code-block')
+		const block = builder.create('code-block', {}, this.params)
 
 		builder.append(this.parent, block, this.next)
 		builder.append(block, next)
@@ -44,7 +44,7 @@ export class CodeBlock extends Widget {
 	}
 
 	stringify(children) {
-		return '<pre>' + children + '</pre>'
+		return '<pre>' + children + '</pre>\n'
 	}
 }
 
@@ -54,13 +54,22 @@ export class CodeLine extends Container {
 
 		this.upHandler = this.upHandler.bind(this)
 		this.downHandler = this.downHandler.bind(this)
+		this.indentHandler = this.indentHandler.bind(this)
+		this.unIndentHandler = this.unIndentHandler.bind(this)
+		this.tabHandler = this.tabHandler.bind(this)
+		this.leftHandler = this.leftHandler.bind(this)
 		this.trimWhiteSpaces = false
 	}
 
 	get shortcuts() {
 		return {
 			'up': this.upHandler,
-			'down': this.downHandler
+			'down': this.downHandler,
+			'ctrl+]/meta+]': this.indentHandler,
+			'ctrl+[/meta+[': this.unIndentHandler,
+			'tab': this.tabHandler,
+			'shift+tab': this.unIndentHandler,
+			'home/meta+left': this.leftHandler
 		}
 	}
 
@@ -84,6 +93,90 @@ export class CodeLine extends Container {
 		}
 	}
 
+	indentHandler(event, { builder, focusedNodes, anchorContainer, anchorOffset, focusContainer, focusOffset, setSelection }) {
+		event.preventDefault()
+
+		const lines = focusedNodes.filter((node) => node.type === 'code-line')
+		const indent = this.detectIndent()
+
+		lines.forEach((line) => {
+			const anchor = builder.getNodeByOffset(line, 0)
+
+			builder.insertText(builder.create('text', { content: indent }), anchor)
+		})
+		setSelection(anchorContainer, anchorOffset + indent.length, focusContainer, focusOffset + indent.length)
+	}
+
+	unIndentHandler(event, { builder, focusedNodes, anchorContainer, anchorOffset, focusContainer, focusOffset, setSelection }) {
+		event.preventDefault()
+
+		const lines = focusedNodes.filter((node) => node.type === 'code-line')
+		const indent = this.detectIndent()
+
+		lines.forEach((line) => {
+			const node = builder.getNodeByOffset(line, 0)
+			let localIndent = indent
+
+			if (node.type === 'text') {
+				if (node.attributes.content.indexOf(localIndent) !== 0) {
+					localIndent = '\t'
+				}
+
+				if (node.attributes.content.indexOf(localIndent) === 0) {
+					const { head, tail } = builder.cutRange(line, 0, line, localIndent.length)
+
+					builder.cutUntil(head, tail)
+					setSelection(anchorContainer, Math.max(0, anchorOffset - localIndent.length), focusContainer, Math.max(0, focusOffset - localIndent.length))
+				}
+			}
+		})
+	}
+
+	tabHandler(event, params) {
+		if (params.isRange) {
+			this.indentHandler(event, params)
+		} else {
+			event.preventDefault()
+
+			const indent = this.detectIndent()
+			const anchor = params.builder.splitByTail(params.anchorContainer, params.builder.splitByOffset(params.anchorContainer, params.anchorOffset).tail)
+
+			params.builder.insertText(params.builder.create('text', { content: indent }), anchor.tail)
+			params.setSelection(params.anchorContainer, params.anchorOffset + indent.length)
+		}
+	}
+
+	leftHandler(event, { builder, focusContainer, focusOffset, setSelection }) {
+		const node = builder.getNodeByOffset(focusContainer, focusOffset)
+		let match
+
+		if (
+			node && node.type === 'text' &&
+			(match = node.attributes.content.match(/[\s\t]+/)) &&
+			(!focusOffset || focusOffset > match[0].length)
+		) {
+			event.preventDefault()
+			setSelection(focusContainer, match[0].length)
+		}
+	}
+
+	detectIndent() {
+		let type = 'tab'
+		let size = 0
+		let current = this.parent.first
+		let params = this.parent.params
+
+		const char = params.type === 'tab' ? '\t' : ' '
+		const length = params.type === 'tab' ? 1 : params.size
+		let indent = ''
+
+		for (let i = 0; i < length; i++) {
+			indent += char
+		}
+
+		return indent
+	}
+
 	enterHandler(
 		event,
 		{
@@ -100,22 +193,34 @@ export class CodeLine extends Container {
 			setSelection(block)
 		} else {
 			const line = builder.create('code-line')
+			const node = builder.getNodeByOffset(this, 0)
+			let match
+			let offset = 0
+
+			if (node && node.type === 'text' && (match = node.attributes.content.match(/^\s*/))) {
+				builder.append(line, builder.create('text', { content: match[0] }))
+				offset = match[0].length
+			}
 
 			builder.append(this.parent, line, this.next)
 			builder.moveTail(this, line, anchorOffset)
-			setSelection(line)
+			setSelection(line, offset)
 		}
 	}
 
 	backspaceHandler(
 		event,
-		{
+		params
+	) {
+		const {
 			builder,
+			anchorContainer,
+			anchorOffset,
 			anchorAtFirstPositionInContainer,
 			anchorAtLastPositionInContainer,
 			setSelection
-		}
-	) {
+		} = params
+
 		if (anchorAtFirstPositionInContainer) {
 			event.preventDefault()
 
@@ -140,6 +245,24 @@ export class CodeLine extends Container {
 				}
 
 				builder.combine(previousSelectableNode, this)
+			}
+		} else {
+			const node = builder.getNodeByOffset(anchorContainer, 0)
+			let match
+
+			if (
+				node && node.type === 'text' &&
+				(match = node.attributes.content.match(/[\s\t]+/)) &&
+				anchorOffset <= match[0].length
+			) {
+				const indent = this.detectIndent()
+				const localOffset = match[0].substr(0, anchorOffset)
+				const tabIndent = localOffset.replace(/[^\t]/g, '')
+				const localIndent = tabIndent.length * indent.length + localOffset.length - tabIndent.length
+
+				if (localIndent % indent.length === 0) {
+					this.unIndentHandler(event, params)
+				}
 			}
 		}
 	}
@@ -192,7 +315,7 @@ export class CodeLine extends Container {
 	}
 
 	stringify(children) {
-		return '<code>' + children + '</code>'
+		return '<code>' + children + '</code>\n'
 	}
 }
 
@@ -203,6 +326,10 @@ export class CodePlugin extends PluginPlugin {
 			'code-block': CodeBlock,
 			'code-line': CodeLine
 		}
+	}
+
+	constructor(params = { type: 'tab', size: 4 }) {
+		super(params)
 	}
 
 	get icons() {
@@ -216,9 +343,51 @@ export class CodePlugin extends PluginPlugin {
 		}
 	}
 
+	get autocompleteRule() {
+		return /(`[^`]+`|```)$/
+	}
+
+	get autocompleteTrigger() {
+		return /^`$/
+	}
+
+	autocomplete(match, builder, selection) {
+		if (selection.anchorContainer.isContainer && selection.anchorContainer.type !== 'code-line') {
+			if (match[0] === '```') {
+				const node = builder.getNodeByOffset(selection.anchorContainer, selection.anchorOffset)
+				const atFirstPosition = selection.anchorContainer.first === node
+
+				if (atFirstPosition) {
+					const codeBlock = builder.create('code-block', {}, this.params)
+					const codeLine = builder.create('code-line')
+
+					builder.append(codeBlock, codeLine)
+					builder.replace(selection.anchorContainer, codeBlock)
+					builder.moveTail(selection.anchorContainer, codeLine, match[0].length)
+				}
+			} else {
+				const { tail } = builder.cutRange(
+					selection.anchorContainer,
+					selection.anchorOffset - match[0].length,
+					selection.anchorContainer,
+					selection.anchorOffset
+				)
+				const codeInline = builder.create('code-inline')
+				const content = builder.create('text', {
+					...tail.attributes,
+					content: tail.attributes.content.substr(1, match[0].length - 2)
+				})
+
+				builder.replace(tail, content)
+				builder.wrap(content, codeInline, content)
+				selection.setSelection(selection.anchorContainer, selection.anchorOffset - 2)
+			}
+		}
+	}
+
 	parseTree(element, builder) {
 		if (element.type === 'pre') {
-			const block = builder.create('code-block')
+			const block = builder.create('code-block', {}, this.params)
 			const children = builder.parseVirtualTree(element.body)
 
 			builder.append(block, children)
@@ -234,7 +403,7 @@ export class CodePlugin extends PluginPlugin {
 	parseJson(element, builder) {
 		switch (element.type) {
 			case 'code-block':
-				return builder.create('code-block')
+				return builder.create('code-block', {}, this.params)
 			case 'code-inline':
 				return builder.create('code-inline')
 			case 'code-line':
@@ -325,7 +494,7 @@ export class CodePlugin extends PluginPlugin {
 
 	createCodeBlock(event, { builder, anchorContainer }) {
 		if (anchorContainer.type !== 'code-block') {
-			const code = builder.create('code-block')
+			const code = builder.create('code-block', {}, this.params)
 			const line = builder.create('code-line')
 
 			builder.append(line, anchorContainer.first)
@@ -358,11 +527,13 @@ export class CodePlugin extends PluginPlugin {
 				}
 
 				if (node.type === 'text') {
-					const codeLine = builder.create('code-line')
+					if (node.attributes.content.trim().length || !(node.previous && node.previous.type === 'code-line')) {
+						const codeLine = builder.create('code-line')
 
-					builder.wrap(node, codeLine, node)
+						builder.wrap(node, codeLine, node)
 
-					return node
+						return node
+					}
 				}
 
 				if (node.type !== 'code-line') {
@@ -383,6 +554,12 @@ export class CodePlugin extends PluginPlugin {
 
 					return parent.parent
 				}
+
+				if (node.type === 'text' && node.attributes.content.match(/\u00a0/)) {
+					builder.setAttribute(node, 'content', node.attributes.content.replace(/\u00a0/g, ' '))
+
+					return node
+				}
 			}
 		}
 
@@ -401,6 +578,15 @@ export class CodePlugin extends PluginPlugin {
 
 				return next
 			}
+
+			if (node.previous && node.previous.type === 'code-inline') {
+				const previous = node.previous
+
+				builder.append(previous, node.first)
+				builder.cut(node)
+
+				return previous
+			}
 		}
 
 		if (node.type === 'code-line') {
@@ -408,7 +594,7 @@ export class CodePlugin extends PluginPlugin {
 			let match
 
 			if (text && text.type === 'text') {
-				if (match = text.attributes.content.match(/\n+/)) {
+				if (match = text.attributes.content.match(/\n/)) {
 					const right = builder.splitByOffset(node, match.index + match[0].length)
 					const left = builder.splitByOffset(node, match.index)
 
