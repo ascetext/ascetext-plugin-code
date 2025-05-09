@@ -1,6 +1,6 @@
 {
   "name": "ascetext-plugin-code",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Ascetext plugin for code formatting",
   "main": "index.js",
   "type": "module",

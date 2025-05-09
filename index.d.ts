@@ -6,9 +6,12 @@ import type {
 	VirtualTree,
 	HandlerParams,
 	Builder,
-	IconsGetter,
-	ActionParams
+	ActionParams,
+	Params
 } from 'ascetext'
+
+type IconsGetter = Record<string, string>;
+type Attributes = Record<string, string | number>
 
 declare class CodeInline extends InlineWidget {
 	constructor();
@@ -27,7 +30,7 @@ declare class CodeInline extends InlineWidget {
 }
 
 declare class CodeBlock extends Widget {
-	constructor();
+	constructor(attributes?: Attributes, params?: Params);
 	render(): VirtualTree;
 	json(): {
 		type: 'code-block';
@@ -66,6 +69,10 @@ declare class CodeLine extends Container {
 }
 
 export default class CodePlugin extends PluginPlugin {
+	constructor(params?: {
+		type: 'space' | 'tab',
+		size: number
+	});
 	get icons(): IconsGetter;
 	get autocompleteRule(): RegExp;
 	get autocompleteTrigger(): RegExp;
