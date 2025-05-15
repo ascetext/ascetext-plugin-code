@@ -330,6 +330,8 @@ export class CodePlugin extends PluginPlugin {
 
 	constructor(params = { type: 'tab', size: 4 }) {
 		super(params)
+
+		this.createCodeBlock = this.createCodeBlock.bind(this)
 	}
 
 	get icons() {
@@ -352,7 +354,11 @@ export class CodePlugin extends PluginPlugin {
 	}
 
 	autocomplete(match, builder, selection) {
-		if (selection.anchorContainer.isContainer && selection.anchorContainer.type !== 'code-line') {
+		if (
+			selection.anchorContainer.isContainer &&
+			selection.anchorContainer.parent.isSection &&
+			selection.anchorContainer.type !== 'code-line'
+		) {
 			if (match[0] === '```') {
 				const node = builder.getNodeByOffset(selection.anchorContainer, selection.anchorOffset)
 				const atFirstPosition = selection.anchorContainer.first === node
