@@ -336,10 +336,10 @@ export class CodePlugin extends PluginPlugin {
 
 	get icons() {
 		return {
-			'code-inline': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none">\
+			'code-inline': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">\
 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 7 5 5-5 5m-6 0-5-5 5-5"/>\
 </svg>',
-			'code-block': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none">\
+			'code-block': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">\
 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18m-7 5 2 2-2 2m-4 0-2-2 2-2m-7 5.8V7.2c0-1.12 0-1.68.218-2.108a2 2 0 0 1 .874-.874C4.52 4 5.08 4 6.2 4h11.6c1.12 0 1.68 0 2.108.218a2 2 0 0 1 .874.874C21 5.52 21 6.08 21 7.2v9.6c0 1.12 0 1.68-.218 2.108a2 2 0 0 1-.874.874C19.48 20 18.92 20 17.8 20H6.2c-1.12 0-1.68 0-2.108-.218a2 2 0 0 1-.874-.874C3 18.48 3 17.92 3 16.8Z"/>\
 </svg>'
 		}
